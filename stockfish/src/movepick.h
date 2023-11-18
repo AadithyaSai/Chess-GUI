@@ -1,6 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -26,8 +28,6 @@
 #include "movegen.h"
 #include "position.h"
 #include "types.h"
-
-namespace Stockfish {
 
 /// StatsEntry stores the stat table value. It is usually a number but could
 /// be a move or even a nested history. We use a class instead of naked value
@@ -62,14 +62,14 @@ public:
 template <typename T, int D, int Size, int... Sizes>
 struct Stats : public std::array<Stats<T, D, Sizes...>, Size>
 {
-  using stats = Stats<T, D, Size, Sizes...>;
+  typedef Stats<T, D, Size, Sizes...> stats;
 
   void fill(const T& v) {
 
     // For standard-layout 'this' points to first struct member
     assert(std::is_standard_layout<stats>::value);
 
-    using entry = StatsEntry<T, D>;
+    typedef StatsEntry<T, D> entry;
     entry* p = reinterpret_cast<entry*>(this);
     std::fill(p, p + sizeof(*this) / sizeof(entry), v);
   }
@@ -86,32 +86,30 @@ enum StatsType { NoCaptures, Captures };
 /// unsuccessful during the current search, and is used for reduction and move
 /// ordering decisions. It uses 2 tables (one for each color) indexed by
 /// the move's from and to squares, see www.chessprogramming.org/Butterfly_Boards
-/// (~11 elo)
-using ButterflyHistory = Stats<int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
+typedef Stats<int16_t, 10692, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)> ButterflyHistory;
 
 /// CounterMoveHistory stores counter moves indexed by [piece][to] of the previous
 /// move, see www.chessprogramming.org/Countermove_Heuristic
-using CounterMoveHistory = Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB>;
+typedef Stats<Move, NOT_USED, PIECE_NB, SQUARE_NB> CounterMoveHistory;
 
 /// CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-using CapturePieceToHistory = Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
+typedef Stats<int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB> CapturePieceToHistory;
 
 /// PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-using PieceToHistory = Stats<int16_t, 29952, PIECE_NB, SQUARE_NB>;
+typedef Stats<int16_t, 29952, PIECE_NB, SQUARE_NB> PieceToHistory;
 
 /// ContinuationHistory is the combined history of a given pair of moves, usually
 /// the current one given a previous one. The nested history table is based on
 /// PieceToHistory instead of ButterflyBoards.
-/// (~63 elo)
-using ContinuationHistory = Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB>;
+typedef Stats<PieceToHistory, NOT_USED, PIECE_NB, SQUARE_NB> ContinuationHistory;
 
 
-/// MovePicker class is used to pick one pseudo-legal move at a time from the
+/// MovePicker class is used to pick one pseudo legal move at a time from the
 /// current position. The most important method is next_move(), which returns a
-/// new pseudo-legal move each time it is called, until there are no moves left,
-/// when MOVE_NONE is returned. In order to improve the efficiency of the
-/// alpha-beta algorithm, MovePicker attempts to return the moves which are most
-/// likely to get a cut-off first.
+/// new pseudo legal move each time it is called, until there are no moves left,
+/// when MOVE_NONE is returned. In order to improve the efficiency of the alpha
+/// beta algorithm, MovePicker attempts to return the moves which are most likely
+/// to get a cut-off first.
 class MovePicker {
 
   enum PickType { Next, Best };
@@ -119,16 +117,16 @@ class MovePicker {
 public:
   MovePicker(const MovePicker&) = delete;
   MovePicker& operator=(const MovePicker&) = delete;
-  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
-                                           const CapturePieceToHistory*,
-                                           const PieceToHistory**,
-                                           Move,
-                                           const Move*);
+  MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
   MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
                                            const CapturePieceToHistory*,
                                            const PieceToHistory**,
                                            Square);
-  MovePicker(const Position&, Move, Value, const CapturePieceToHistory*);
+  MovePicker(const Position&, Move, Depth, const ButterflyHistory*,
+                                           const CapturePieceToHistory*,
+                                           const PieceToHistory**,
+                                           Move,
+                                           Move*);
   Move next_move(bool skipQuiets = false);
 
 private:
@@ -149,7 +147,5 @@ private:
   Depth depth;
   ExtMove moves[MAX_MOVES];
 };
-
-} // namespace Stockfish
 
 #endif // #ifndef MOVEPICK_H_INCLUDED

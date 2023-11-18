@@ -1,6 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,32 +26,23 @@
 #include <ostream>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 #include "types.h"
 
-#define stringify2(x) #x
-#define stringify(x) stringify2(x)
-
-namespace Stockfish {
-
-std::string engine_info(bool to_uci = false);
-std::string compiler_info();
+const std::string engine_info(bool to_uci = false);
+const std::string compiler_info();
 void prefetch(void* addr);
 void start_logger(const std::string& fname);
-void* std_aligned_alloc(size_t alignment, size_t size);
-void std_aligned_free(void* ptr);
-void* aligned_large_pages_alloc(size_t size); // memory aligned by page size, min alignment: 4096 bytes
-void aligned_large_pages_free(void* mem); // nop if mem == nullptr
 
-void dbg_hit_on(bool cond, int slot = 0);
-void dbg_mean_of(int64_t value, int slot = 0);
-void dbg_stdev_of(int64_t value, int slot = 0);
-void dbg_correl_of(int64_t value1, int64_t value2, int slot = 0);
+void dbg_hit_on(bool b);
+void dbg_hit_on(bool c, bool b);
+void dbg_mean_of(int v);
 void dbg_print();
 
-using TimePoint = std::chrono::milliseconds::rep; // A value in milliseconds
+typedef std::chrono::milliseconds::rep TimePoint; // A value in milliseconds
+
 static_assert(sizeof(TimePoint) == sizeof(int64_t), "TimePoint should be 64 bits");
+
 inline TimePoint now() {
   return std::chrono::duration_cast<std::chrono::milliseconds>
         (std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -69,39 +62,6 @@ std::ostream& operator<<(std::ostream&, SyncCout);
 
 #define sync_cout std::cout << IO_LOCK
 #define sync_endl std::endl << IO_UNLOCK
-
-
-// align_ptr_up() : get the first aligned element of an array.
-// ptr must point to an array of size at least `sizeof(T) * N + alignment` bytes,
-// where N is the number of elements in the array.
-template <uintptr_t Alignment, typename T>
-T* align_ptr_up(T* ptr)
-{
-  static_assert(alignof(T) < Alignment);
-
-  const uintptr_t ptrint = reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(ptr));
-  return reinterpret_cast<T*>(reinterpret_cast<char*>((ptrint + (Alignment - 1)) / Alignment * Alignment));
-}
-
-
-// IsLittleEndian : true if and only if the binary is compiled on a little endian machine
-static inline const union { uint32_t i; char c[4]; } Le = { 0x01020304 };
-static inline const bool IsLittleEndian = (Le.c[0] == 4);
-
-
-template <typename T, std::size_t MaxSize>
-class ValueList {
-
-public:
-  std::size_t size() const { return size_; }
-  void push_back(const T& value) { values_[size_++] = value; }
-  const T* begin() const { return values_; }
-  const T* end() const { return values_ + size_; }
-
-private:
-  T values_[MaxSize];
-  std::size_t size_ = 0;
-};
 
 
 /// xorshift64star Pseudo-Random Number Generator
@@ -140,19 +100,6 @@ public:
   { return T(rand64() & rand64() & rand64()); }
 };
 
-inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
-#if defined(__GNUC__) && defined(IS_64BIT)
-    __extension__ using uint128 = unsigned __int128;
-    return ((uint128)a * (uint128)b) >> 64;
-#else
-    uint64_t aL = (uint32_t)a, aH = a >> 32;
-    uint64_t bL = (uint32_t)b, bH = b >> 32;
-    uint64_t c1 = (aL * bL) >> 32;
-    uint64_t c2 = aH * bL + c1;
-    uint64_t c3 = aL * bH + (uint32_t)c2;
-    return aH * bH + (c2 >> 32) + (c3 >> 32);
-#endif
-}
 
 /// Under Windows it is not possible for a process to run on more than one
 /// logical processor group. This usually means to be limited to use max 64
@@ -163,14 +110,5 @@ inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
 namespace WinProcGroup {
   void bindThisThread(size_t idx);
 }
-
-namespace CommandLine {
-  void init(int argc, char* argv[]);
-
-  extern std::string binaryDirectory;  // path of the executable directory
-  extern std::string workingDirectory; // path of the working directory
-}
-
-} // namespace Stockfish
 
 #endif // #ifndef MISC_H_INCLUDED

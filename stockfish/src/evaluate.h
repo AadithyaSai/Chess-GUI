@@ -1,6 +1,8 @@
 /*
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
-  Copyright (C) 2004-2023 The Stockfish developers (see AUTHORS file)
+  Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
+  Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
+  Copyright (C) 2015-2020 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,36 +22,18 @@
 #define EVALUATE_H_INCLUDED
 
 #include <string>
-#include <optional>
 
 #include "types.h"
-
-namespace Stockfish {
 
 class Position;
 
 namespace Eval {
 
-  std::string trace(Position& pos);
-  Value evaluate(const Position& pos);
+constexpr Value Tempo = Value(28); // Must be visible to search
 
-  extern bool useNNUE;
-  extern std::string currentEvalFileName;
+std::string trace(const Position& pos);
 
-  // The default net name MUST follow the format nn-[SHA256 first 12 digits].nnue
-  // for the build process (profile-build and fishtest) to work. Do not change the
-  // name of the macro, as it is used in the Makefile.
-  #define EvalFileDefaultName   "nn-5af11540bbfe.nnue"
-
-  namespace NNUE {
-
-    void init();
-    void verify();
-
-  } // namespace NNUE
-
-} // namespace Eval
-
-} // namespace Stockfish
+Value evaluate(const Position& pos);
+}
 
 #endif // #ifndef EVALUATE_H_INCLUDED

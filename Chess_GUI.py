@@ -171,7 +171,7 @@ class Chess(PyQt6.QWidget):
         self.board.set_castling_fen('-')
         self.noshell = 0x08000000
 
-        self.stockfish = engine.SimpleEngine.popen_uci(r'stockfish\stockfish-windows-x86-64.exe',
+        self.stockfish = engine.SimpleEngine.popen_uci(r'stockfish\Windows\stockfish_20011801_x64.exe',
                                                        creationflags=self.noshell)
 
         if self.level == 'easy':
